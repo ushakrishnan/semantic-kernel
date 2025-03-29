@@ -265,6 +265,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Agents.OpenAI", "src\Agents
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Demos", "Demos", "{5D4C0700-BBB5-418F-A7B2-F392B9A18263}"
 	ProjectSection(SolutionItems) = preProject
+		samples\Concepts\appsettings.Development.json = samples\Concepts\appsettings.Development.json
 		samples\Demos\README.md = samples\Demos\README.md
 	EndProjectSection
 EndProject
@@ -461,6 +462,7 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcessFramework.Aspire.SummaryAgent", "samples\Demos\ProcessFrameworkWithAspire\ProcessFramework.Aspire\ProcessFramework.Aspire.SummaryAgent\ProcessFramework.Aspire.SummaryAgent.csproj", "{37381352-4F10-427F-AB8A-51FEAB265201}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ProcessFramework.Aspire.TranslatorAgent", "samples\Demos\ProcessFrameworkWithAspire\ProcessFramework.Aspire\ProcessFramework.Aspire.TranslatorAgent\ProcessFramework.Aspire.TranslatorAgent.csproj", "{DAD5FC6A-8CA0-43AC-87E1-032DFBD6B02A}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Agents.Bedrock", "src\Agents\Bedrock\Agents.Bedrock.csproj", "{8C658E1E-83C8-4127-B8BF-27A638A45DDD}"
 EndProject
 Global

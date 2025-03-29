@@ -17,10 +17,19 @@ public sealed class Step1_Create_Kernel(ITestOutputHelper output) : BaseTest(out
     public async Task CreateKernelAsync()
     {
         // Create a kernel with OpenAI chat completion
+        //Kernel kernel = Kernel.CreateBuilder()
+        //    .AddOpenAIChatCompletion(
+        //        modelId: TestConfiguration.OpenAI.ChatModelId,
+        //        apiKey: TestConfiguration.OpenAI.ApiKey)
+        //    .Build();
+
         Kernel kernel = Kernel.CreateBuilder()
-            .AddOpenAIChatCompletion(
-                modelId: TestConfiguration.OpenAI.ChatModelId,
-                apiKey: TestConfiguration.OpenAI.ApiKey)
+            .AddAzureOpenAIChatCompletion(
+                deploymentName: TestConfiguration.AzureOpenAI.ChatDeploymentName,
+                apiKey: TestConfiguration.AzureOpenAI.ApiKey,
+                endpoint: TestConfiguration.AzureOpenAI.Endpoint,
+                modelId: TestConfiguration.AzureOpenAI.ChatModelId
+                )
             .Build();
 
         // Example 1. Invoke the kernel with a prompt and display the result

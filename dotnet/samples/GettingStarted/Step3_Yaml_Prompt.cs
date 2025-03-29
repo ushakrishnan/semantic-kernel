@@ -18,11 +18,20 @@ public sealed class Step3_Yaml_Prompt(ITestOutputHelper output) : BaseTest(outpu
     public async Task CreatePromptFromYamlAsync()
     {
         // Create a kernel with OpenAI chat completion
+        //Kernel kernel = Kernel.CreateBuilder()
+        //    .AddOpenAIChatCompletion(
+        //        modelId: TestConfiguration.OpenAI.ChatModelId,
+        //        apiKey: TestConfiguration.OpenAI.ApiKey)
+        //    .Build();
+
         Kernel kernel = Kernel.CreateBuilder()
-            .AddOpenAIChatCompletion(
-                modelId: TestConfiguration.OpenAI.ChatModelId,
-                apiKey: TestConfiguration.OpenAI.ApiKey)
-            .Build();
+        .AddAzureOpenAIChatCompletion(
+            deploymentName: TestConfiguration.AzureOpenAI.ChatDeploymentName,
+            apiKey: TestConfiguration.AzureOpenAI.ApiKey,
+            endpoint: TestConfiguration.AzureOpenAI.Endpoint,
+            modelId: TestConfiguration.AzureOpenAI.ChatModelId
+            )
+        .Build();
 
         // Load prompt from resource
         var generateStoryYaml = EmbeddedResource.Read("GenerateStory.yaml");
