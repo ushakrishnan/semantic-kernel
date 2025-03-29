@@ -3,11 +3,9 @@
 import asyncio
 import os
 
-from semantic_kernel.agents import AgentGroupChat, ChatCompletionAgent
-from semantic_kernel.agents.open_ai import AzureAssistantAgent
-from semantic_kernel.connectors.ai.open_ai.services.azure_chat_completion import AzureChatCompletion
-from semantic_kernel.contents.annotation_content import AnnotationContent
-from semantic_kernel.contents.utils.author_role import AuthorRole
+from semantic_kernel.agents import AgentGroupChat, AzureAssistantAgent, ChatCompletionAgent
+from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
+from semantic_kernel.contents import AnnotationContent, AuthorRole
 from semantic_kernel.kernel import Kernel
 
 """
@@ -62,7 +60,6 @@ async def main():
 
     service_id = "summary"
     summary_agent = ChatCompletionAgent(
-        service_id=service_id,
         kernel=_create_kernel_with_chat_completion(service_id=service_id),
         instructions="Summarize the entire conversation for the user in natural language.",
         name="SummaryAgent",

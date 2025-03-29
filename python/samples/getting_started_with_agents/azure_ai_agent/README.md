@@ -59,13 +59,13 @@ You can pass in a connection string (shown above) to create the client:
 
 ```python
 async with (
-        DefaultAzureCredential() as creds,
-        AzureAIAgent.create_client(
-            credential=creds,
-            conn_str=ai_agent_settings.project_connection_string.get_secret_value(),
-        ) as client,
-    ):
-        # operational logic
+    DefaultAzureCredential() as creds,
+    AzureAIAgent.create_client(
+        credential=creds,
+        conn_str=ai_agent_settings.project_connection_string.get_secret_value(),
+    ) as client,
+):
+    # operational logic
 ```
 
 ### Creating an Agent Definition
@@ -93,6 +93,12 @@ agent = AzureAIAgent(
 
 Now, you can create a thread, add chat messages to the agent, and invoke it with given inputs and optional parameters.
 
+### Reusing an Agent Definition
+
+In certain scenarios, you may prefer to reuse an existing agent definition rather than creating a new one. This can be done by calling `await client.agents.get_agent(...)` instead of `await client.agents.create_agent(...)`. 
+
+For a practical example, refer to the [`step7_azure_ai_agent_retrieval`](./step7_azure_ai_agent_retrieval.py) sample.
+
 ## Requests and Rate Limits
 
 ### Managing API Request Frequency
@@ -106,7 +112,7 @@ By default, the polling interval is 250 ms. You can slow it down to 1 second (or
 ```python
 # Required imports
 from datetime import timedelta
-from semantic_kernel.agents.open_ai.run_polling_options import RunPollingOptions
+from semantic_kernel.agents.run_polling_options import RunPollingOptions
 
 # Configure the polling options as part of the `AzureAIAgent`
 agent = AzureAIAgent(

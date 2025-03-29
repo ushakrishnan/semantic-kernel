@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System;
 using System.Collections.Generic;
@@ -7,10 +7,12 @@ using System.Linq;
 using System.Threading.Tasks;
 using Amazon.BedrockAgent;
 using Amazon.BedrockAgent.Model;
+using Amazon.BedrockAgentRuntime;
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.Agents.Bedrock;
-using Microsoft.SemanticKernel.Agents.Bedrock.Extensions;
+using Microsoft.SemanticKernel.ChatCompletion;
 using SemanticKernel.IntegrationTests.TestSettings;
 using Xunit;
 
@@ -29,6 +31,8 @@ public sealed class BedrockAgentTests : IDisposable
 
     private readonly AmazonBedrockAgentClient _client = new();
 
+    private readonly AmazonBedrockAgentRuntimeClient _runtimeClient = new();
+
     /// <summary>
     /// Integration test for invoking a <see cref="BedrockAgent"/>.
     /// </summary>
@@ -37,15 +41,17 @@ public sealed class BedrockAgentTests : IDisposable
     public async Task InvokeTestAsync(string input)
     {
         var agentModel = await this._client.CreateAndPrepareAgentAsync(this.GetCreateAgentRequest());
-        var bedrockAgent = new BedrockAgent(agentModel, this._client);
+        var bedrockAgent = new BedrockAgent(agentModel, this._client, this._runtimeClient);
+        var thread = new BedrockAgentThread(this._runtimeClient);
 
         try
         {
-            await this.ExecuteAgentAsync(bedrockAgent, input);
+            await this.ExecuteAgentAsync(bedrockAgent, input, thread);
         }
         finally
         {
-            await this._client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
+            await bedrockAgent.Client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
+            await thread.DeleteAsync();
         }
     }
 
@@ -57,15 +63,17 @@ public sealed class BedrockAgentTests : IDisposable
     public async Task InvokeStreamingTestAsync(string input)
     {
         var agentModel = await this._client.CreateAndPrepareAgentAsync(this.GetCreateAgentRequest());
-        var bedrockAgent = new BedrockAgent(agentModel, this._client);
+        var bedrockAgent = new BedrockAgent(agentModel, this._client, this._runtimeClient);
+        var thread = new BedrockAgentThread(this._runtimeClient);
 
         try
         {
-            await this.ExecuteAgentStreamingAsync(bedrockAgent, input);
+            await this.ExecuteAgentStreamingAsync(bedrockAgent, input, thread);
         }
         finally
         {
-            await this._client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
+            await bedrockAgent.Client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
+            await thread.DeleteAsync();
         }
     }
 
@@ -82,12 +90,13 @@ Dolphin  2")]
     public async Task InvokeWithCodeInterpreterTestAsync(string input)
     {
         var agentModel = await this._client.CreateAndPrepareAgentAsync(this.GetCreateAgentRequest());
-        var bedrockAgent = new BedrockAgent(agentModel, this._client);
+        var bedrockAgent = new BedrockAgent(agentModel, this._client, this._runtimeClient);
         await bedrockAgent.CreateCodeInterpreterActionGroupAsync();
+        var thread = new BedrockAgentThread(this._runtimeClient);
 
         try
         {
-            var responses = await this.ExecuteAgentAsync(bedrockAgent, input);
+            var responses = await this.ExecuteAgentAsync(bedrockAgent, input, thread);
             BinaryContent? binaryContent = null;
             foreach (var response in responses)
             {
@@ -100,7 +109,8 @@ Dolphin  2")]
         }
         finally
         {
-            await this._client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
+            await bedrockAgent.Client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
+            await thread.DeleteAsync();
         }
     }
 
@@ -115,19 +125,50 @@ Dolphin  2")]
         kernel.Plugins.Add(KernelPluginFactory.CreateFromType<WeatherPlugin>());
 
         var agentModel = await this._client.CreateAndPrepareAgentAsync(this.GetCreateAgentRequest());
-        var bedrockAgent = new BedrockAgent(agentModel, this._client)
+        var bedrockAgent = new BedrockAgent(agentModel, this._client, this._runtimeClient)
         {
             Kernel = kernel,
         };
         await bedrockAgent.CreateKernelFunctionActionGroupAsync();
+        var thread = new BedrockAgentThread(this._runtimeClient);
 
         try
         {
-            await this.ExecuteAgentAsync(bedrockAgent, input, expected);
+            await this.ExecuteAgentAsync(bedrockAgent, input, thread, expected);
         }
         finally
         {
-            await this._client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
+            await bedrockAgent.Client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
+            await thread.DeleteAsync();
+        }
+    }
+
+    /// <summary>
+    /// Integration test for invoking a <see cref="BedrockAgent"/> with Kernel functions that return complex types.
+    /// </summary>
+    [Theory(Skip = "This test is for manual verification.")]
+    [InlineData("What is the special soup and how much does it cost?", "Clam Chowder")]
+    public async Task InvokeWithKernelFunctionTestComplexTypesAsync(string input, string expected)
+    {
+        Kernel kernel = new();
+        kernel.Plugins.Add(KernelPluginFactory.CreateFromType<MenuPlugin>());
+
+        var agentModel = await this._client.CreateAndPrepareAgentAsync(this.GetCreateAgentRequest());
+        var bedrockAgent = new BedrockAgent(agentModel, this._client, this._runtimeClient)
+        {
+            Kernel = kernel,
+        };
+        await bedrockAgent.CreateKernelFunctionActionGroupAsync();
+        var thread = new BedrockAgentThread(this._runtimeClient);
+
+        try
+        {
+            await this.ExecuteAgentAsync(bedrockAgent, input, thread, expected);
+        }
+        finally
+        {
+            await bedrockAgent.Client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
+            await thread.DeleteAsync();
         }
     }
 
@@ -138,14 +179,15 @@ Dolphin  2")]
     /// </summary>
     /// <param name="agent">The agent to execute.</param>
     /// <param name="input">The input to provide to the agent.</param>
+    /// <param name="thread">The thread to use for the agent.</param>
     /// <param name="expected">The expected output from the agent.</param>
     /// <returns>The chat messages returned by the agent for additional verification.</returns>
-    private async Task<List<ChatMessageContent>> ExecuteAgentAsync(BedrockAgent agent, string input, string? expected = null)
+    private async Task<List<ChatMessageContent>> ExecuteAgentAsync(BedrockAgent agent, string input, AgentThread thread, string? expected = null)
     {
-        var responses = agent.InvokeAsync(BedrockAgent.CreateSessionId(), input, null, default);
+        var responses = agent.InvokeAsync(new ChatMessageContent(AuthorRole.User, input), thread, null, default);
         string responseContent = string.Empty;
         List<ChatMessageContent> chatMessages = new();
-        await foreach (var response in responses)
+        await foreach (ChatMessageContent response in responses)
         {
             // Non-streaming invoke will only return one response.
             responseContent = response.Content ?? string.Empty;
@@ -171,14 +213,15 @@ Dolphin  2")]
     /// </summary>
     /// <param name="agent">The agent to execute.</param>
     /// <param name="input">The input to provide to the agent.</param>
+    /// <param name="thread">The thread to use for the agent.</param>
     /// <param name="expected">The expected output from the agent.</param>
     /// <returns>The chat messages returned by the agent for additional verification.</returns>
-    private async Task<List<StreamingChatMessageContent>> ExecuteAgentStreamingAsync(BedrockAgent agent, string input, string? expected = null)
+    private async Task<List<StreamingChatMessageContent>> ExecuteAgentStreamingAsync(BedrockAgent agent, string input, AgentThread thread, string? expected = null)
     {
-        var responses = agent.InvokeStreamingAsync(BedrockAgent.CreateSessionId(), input, null, default);
+        var responses = agent.InvokeStreamingAsync(new ChatMessageContent(AuthorRole.User, input), thread, null, default);
         string responseContent = string.Empty;
         List<StreamingChatMessageContent> chatMessages = new();
-        await foreach (var response in responses)
+        await foreach (StreamingChatMessageContent response in responses)
         {
             responseContent = response.Content ?? string.Empty;
             chatMessages.Add(response);
@@ -206,7 +249,7 @@ Dolphin  2")]
 
         return new()
         {
-            AgentName = AgentName,
+            AgentName = $"{AgentName}-{Guid.NewGuid():n}",
             Description = AgentDescription,
             Instruction = AgentInstruction,
             AgentResourceRoleArn = bedrockAgentSettings.AgentResourceRoleArn,
@@ -217,6 +260,7 @@ Dolphin  2")]
     public void Dispose()
     {
         this._client.Dispose();
+        this._runtimeClient.Dispose();
     }
 
 #pragma warning disable CA1812 // Avoid uninstantiated internal classes
@@ -232,6 +276,60 @@ Dolphin  2")]
         public string Forecast([Description("The location to get the weather for.")] string location)
         {
             return $"The forecast for {location} is 75 degrees tomorrow.";
+        }
+    }
+
+    private sealed class MenuPlugin
+    {
+        [KernelFunction, Description("Provides a list of specials from the menu.")]
+        public MenuItem[] GetSpecials()
+        {
+            return [.. s_menuItems.Where(i => i.IsSpecial)];
+        }
+
+        [KernelFunction, Description("Provides the price of the requested menu item.")]
+        public float? GetItemPrice([Description("The name of the menu item.")] string menuItem)
+        {
+            return s_menuItems.FirstOrDefault(i => i.Name.Equals(menuItem, StringComparison.OrdinalIgnoreCase))?.Price;
+        }
+
+        private static readonly MenuItem[] s_menuItems =
+        [
+            new()
+            {
+                Category = "Soup",
+                Name = "Clam Chowder",
+                Price = 4.95f,
+                IsSpecial = true,
+            },
+            new()
+            {
+                Category = "Soup",
+                Name = "Tomato Soup",
+                Price = 4.95f,
+                IsSpecial = false,
+            },
+            new()
+            {
+                Category = "Salad",
+                Name = "Cobb Salad",
+                Price = 9.99f,
+            },
+            new()
+            {
+                Category = "Drink",
+                Name = "Chai Tea",
+                Price = 2.95f,
+                IsSpecial = true,
+            },
+        ];
+
+        public sealed class MenuItem
+        {
+            public required string Category { get; init; }
+            public required string Name { get; init; }
+            public float Price { get; init; }
+            public bool IsSpecial { get; init; }
         }
     }
 #pragma warning restore CA1812 // Avoid uninstantiated internal classes

@@ -1,8 +1,9 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using Amazon.BedrockAgentRuntime.Model;
+using Microsoft.SemanticKernel;
+using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.Agents.Bedrock;
-using Microsoft.SemanticKernel.Agents.Bedrock.Extensions;
+using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace GettingStarted.BedrockAgents;
 
@@ -25,7 +26,7 @@ public class Step05_BedrockAgent_FileSearch(ITestOutputHelper output) : BaseBedr
         var agentModel = await this.Client.CreateAndPrepareAgentAsync(this.GetCreateAgentRequest(agentName));
         // Create a new BedrockAgent instance with the agent model and the client
         // so that we can interact with the agent using Semantic Kernel contents.
-        var bedrockAgent = new BedrockAgent(agentModel, this.Client);
+        var bedrockAgent = new BedrockAgent(agentModel, this.Client, this.RuntimeClient);
         // Associate the agent with a knowledge base and prepare the agent
         await bedrockAgent.AssociateAgentKnowledgeBaseAsync(
             KnowledgeBaseId,
@@ -49,17 +50,9 @@ public class Step05_BedrockAgent_FileSearch(ITestOutputHelper output) : BaseBedr
         var userQuery = "What is Semantic Kernel?";
         try
         {
-            // Customize the request for advanced scenarios
-            InvokeAgentRequest invokeAgentRequest = new()
-            {
-                AgentAliasId = BedrockAgent.WorkingDraftAgentAlias,
-                AgentId = bedrockAgent.Id,
-                SessionId = BedrockAgent.CreateSessionId(),
-                InputText = userQuery,
-            };
-
-            var responses = bedrockAgent.InvokeAsync(invokeAgentRequest, null, CancellationToken.None);
-            await foreach (var response in responses)
+            AgentThread bedrockThread = new BedrockAgentThread(this.RuntimeClient);
+            var responses = bedrockAgent.InvokeAsync(new ChatMessageContent(AuthorRole.User, userQuery), bedrockThread, null, CancellationToken.None);
+            await foreach (ChatMessageContent response in responses)
             {
                 if (response.Content != null)
                 {
@@ -69,7 +62,7 @@ public class Step05_BedrockAgent_FileSearch(ITestOutputHelper output) : BaseBedr
         }
         finally
         {
-            await this.Client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
+            await bedrockAgent.Client.DeleteAgentAsync(new() { AgentId = bedrockAgent.Id });
         }
     }
 }

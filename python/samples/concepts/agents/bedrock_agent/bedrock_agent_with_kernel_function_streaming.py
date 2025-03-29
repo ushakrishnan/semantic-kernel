@@ -3,16 +3,18 @@
 import asyncio
 from typing import Annotated
 
-from semantic_kernel.agents.bedrock.bedrock_agent import BedrockAgent
+from semantic_kernel.agents import BedrockAgent, BedrockAgentThread
 from semantic_kernel.functions.kernel_function_decorator import kernel_function
 from semantic_kernel.kernel import Kernel
 
-# This sample shows how to interact with a Bedrock agent that is capable of using kernel functions.
-# This sample uses the following main component(s):
-# - a Bedrock agent
-# - a kernel function
-# - a kernel
-# You will learn how to create a new Bedrock agent and ask it a question that requires a kernel function to answer.
+"""
+This sample shows how to interact with a Bedrock agent that is capable of using kernel functions.
+This sample uses the following main component(s):
+- a Bedrock agent
+- a kernel function
+- a kernel
+You will learn how to create a new Bedrock agent and ask it a question that requires a kernel function to answer.
+"""
 
 AGENT_NAME = "semantic-kernel-bedrock-agent"
 INSTRUCTION = "You are a friendly assistant. You help people find information."
@@ -38,26 +40,29 @@ async def main():
     # Create a kernel
     kernel = get_kernel()
 
-    bedrock_agent = await BedrockAgent.create(
+    bedrock_agent = await BedrockAgent.create_and_prepare_agent(
         AGENT_NAME,
-        instructions=INSTRUCTION,
+        INSTRUCTION,
         kernel=kernel,
-        enable_kernel_function=True,
     )
+    # Note: We still need to create the kernel function action group on the service side.
+    await bedrock_agent.create_kernel_function_action_group()
 
-    session_id = BedrockAgent.create_session_id()
+    thread: BedrockAgentThread = None
 
     try:
         # Invoke the agent
         print("Response: ")
         async for response in bedrock_agent.invoke_stream(
-            session_id=session_id,
-            input_text="What is the weather in Seattle?",
+            messages="What is the weather in Seattle?",
+            thread=thread,
         ):
             print(response, end="")
+            thread = response.thread
     finally:
         # Delete the agent
         await bedrock_agent.delete_agent()
+        await thread.delete() if thread else None
 
     # Sample output (using anthropic.claude-3-haiku-20240307-v1:0):
     # Response:

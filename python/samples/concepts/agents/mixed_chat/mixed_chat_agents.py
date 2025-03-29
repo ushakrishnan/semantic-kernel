@@ -2,11 +2,10 @@
 
 import asyncio
 
-from semantic_kernel.agents import AgentGroupChat, ChatCompletionAgent
-from semantic_kernel.agents.open_ai import AzureAssistantAgent
+from semantic_kernel.agents import AgentGroupChat, AzureAssistantAgent, ChatCompletionAgent
 from semantic_kernel.agents.strategies.termination.termination_strategy import TerminationStrategy
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
-from semantic_kernel.contents.utils.author_role import AuthorRole
+from semantic_kernel.contents import AuthorRole
 from semantic_kernel.kernel import Kernel
 
 #####################################################################
@@ -52,7 +51,6 @@ def _create_kernel_with_chat_completion(service_id: str) -> Kernel:
 
 async def main():
     agent_reviewer = ChatCompletionAgent(
-        service_id="artdirector",
         kernel=_create_kernel_with_chat_completion("artdirector"),
         name=REVIEWER_NAME,
         instructions=REVIEWER_INSTRUCTIONS,

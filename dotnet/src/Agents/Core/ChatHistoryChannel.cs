@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -15,6 +16,7 @@ namespace Microsoft.SemanticKernel.Agents;
 /// <summary>
 /// Represents an <see cref="AgentChannel"/> specialization that acts upon a <see cref="ChatHistoryKernelAgent"/>.
 /// </summary>
+[Experimental("SKEXP0110")]
 internal sealed class ChatHistoryChannel : AgentChannel
 {
     // Supported content types for <see cref="ReceiveAsync"/> when
@@ -49,7 +51,9 @@ internal sealed class ChatHistoryChannel : AgentChannel
         Queue<ChatMessageContent> messageQueue = [];
 
         ChatMessageContent? yieldMessage = null;
+#pragma warning disable CS0618 // Type or member is obsolete
         await foreach (ChatMessageContent responseMessage in historyAgent.InvokeAsync(this._history, null, null, cancellationToken).ConfigureAwait(false))
+#pragma warning restore CS0618 // Type or member is obsolete
         {
             // Capture all messages that have been included in the mutated the history.
             for (int messageIndex = messageCount; messageIndex < this._history.Count; messageIndex++)
@@ -101,7 +105,9 @@ internal sealed class ChatHistoryChannel : AgentChannel
 
         int messageCount = this._history.Count;
 
+#pragma warning disable CS0618 // Type or member is obsolete
         await foreach (StreamingChatMessageContent streamingMessage in historyAgent.InvokeStreamingAsync(this._history, null, null, cancellationToken).ConfigureAwait(false))
+#pragma warning restore CS0618 // Type or member is obsolete
         {
             yield return streamingMessage;
         }

@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.SemanticKernel.Agents.Extensions;
@@ -12,6 +13,7 @@ namespace Microsoft.SemanticKernel.Agents.OpenAI;
 /// <summary>
 /// A <see cref="AgentChannel"/> specialization for use with <see cref="OpenAIAssistantAgent"/>.
 /// </summary>
+[Experimental("SKEXP0110")]
 internal sealed class OpenAIAssistantChannel(AssistantClient client, string threadId)
     : AgentChannel<OpenAIAssistantAgent>
 {
@@ -50,7 +52,7 @@ internal sealed class OpenAIAssistantChannel(AssistantClient client, string thre
     /// <inheritdoc/>
     protected override IAsyncEnumerable<ChatMessageContent> GetHistoryAsync(CancellationToken cancellationToken)
     {
-        return AssistantThreadActions.GetMessagesAsync(this._client, this._threadId, cancellationToken);
+        return AssistantThreadActions.GetMessagesAsync(this._client, this._threadId, null, cancellationToken);
     }
 
     /// <inheritdoc/>
