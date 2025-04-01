@@ -498,3 +498,4 @@ swa-cli.config.json
 # kiota workspace files
 **/.kiota
 /dotnet/samples/GettingStarted/appsettings.json
+/dotnet/samples/Demos/ModelContextProtocolClientServer/MCPServer/appsettings.json
